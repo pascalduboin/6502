@@ -40,7 +40,7 @@ HAS_65C:
  HEX FB ; XCE instruction is a 65C02 NOP.
  BCC BY_65 ; If it was a 65816, carry would have set.
  HEX FB
- SEC ; flag processor as 65816.
+ SEC ; flag as 65816.
 ;
 BY_65
  CLD
