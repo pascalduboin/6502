@@ -3,7 +3,7 @@
 *#--------------->
 * HAS_80COLS
 * SCAN SLOTS
-* FOR 80 COLS CARDS
+* FOR 80 COLS CARD
 *
 * P. DUBOIN
 * 1 NOV 2024

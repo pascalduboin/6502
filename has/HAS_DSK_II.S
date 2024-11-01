@@ -2,7 +2,7 @@
 *
 *#--------------->
 * HAS_DISK_II
-* SCAN SLOTS FOR
+* SCAN SLOTS
 * FOR DISK II CARDS
 *
 * P. DUBOIN

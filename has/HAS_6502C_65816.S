@@ -1,13 +1,18 @@
  NLS
 *
 *#--------------->
-* HAS_6502C/65816
+* HAS_65C
+* OR 65816
+* TEST THE
+* PROCESSOR 
+* MODEL
 *
 * P. DUBOIN
 * 1 NOV 2024
 * LISA 2.5
 *
 * FLAG VALUE
+*
 * SIGN (minus) 6502
 * SIGN (plus) 65C02, 65816
 * CARRY (clear) 65C02
@@ -24,7 +29,7 @@ DSK_LST EPZ 9
  ORG $800
  OBJ $800
 ;
-HAS_02C:
+HAS_65C:
  SED ; Use known bugs to determine processor type.
  LDA #$99
  CLC
