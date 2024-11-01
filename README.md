@@ -14,6 +14,5 @@ Each file in this folder provides distinct utility tools aimed at enhancing disk
 
 Feel free to explore, modify, and contribute to this project as part of your Apple II development endeavors!
 
-Pascal DUBOIN
-AppleAddict from the Early Days
+Pascal DUBOIN — AppleAddict from the Early Days.
 Call -151 for Ever
