@@ -4,7 +4,12 @@ NLS
 * HAS_80COLS
 * SCAN SLOTS
 * FOR 80 COLS CARDS
+*
+* P. DUBOIN
+* 1 NOV 2024
+* LISA 2.5
 *#--------------->
+*
 *
 ;
 ** ZPAGE
