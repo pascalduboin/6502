@@ -30,20 +30,19 @@ DSK_LST EPZ 9
  OBJ $800
 ;
 HAS_65C:
- SED ; Use known bugs to determine processor type.
+ SED
  LDA #$99
  CLC
  ADC #1
- BMI DONE ; Bug in 6502 causes sign flag not to clear.
+ BMI BY_65 ; Bug in 6502 causes sign flag not to clear.
 ;
  CLC
- XCE ; XCE instruction is a 65C02 NOP.
- BCC DONE ; If it was a 65816, carry would have set.
-;
- XCE ; restore 65816 to 6502 emulation mode.
+ HEX FB ; XCE instruction is a 65C02 NOP.
+ BCC BY_65 ; If it was a 65816, carry would have set.
+ HEX FB
  SEC ; flag processor as 65816.
 ;
-DONE:
+BY_65
  CLD
  RTS
 ;
