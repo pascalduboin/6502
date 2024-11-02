@@ -1,75 +1,87 @@
  NLS
-*
-*#--------------->
-* HAS_80COLS
-* SCAN SLOTS
-* FOR 80 COLS CARDS
-*
-* P. DUBOIN
-* 1 NOV 2024
-* LISA 2.5
-*
-* $Cn05 = $38
-* $Cn07 = $18
-* $Cn0B = $01
-* $Cn0C = $8x
-* (High nibble is $8
-* low nibble is
-* device-specific)
-*#--------------->
-*
-*
 ;
-** ZPAGE
-PTR EPZ 6
-COL_80 EPZ 8
+*#---------------->
+* HAS MOUSE
+* PASCAL DUBOIN
+* Le 25 Juin 2023
+* LISA 2.5 — 6502
+*#---------------->
 ;
-** ROM
+;
+; Localiser le firmware de la souris
+; Recherche par slot en recherchant
+; les octets d'identification de la souris :
+;
+;  $Cn05 = $38 — $Cn07 = $18
+;  $Cn0B = $01 — $Cn0C = $20
+;  $CnFB = $D6
+;
+; VARS ZPAGE
+;
+PTR EPZ 4
+MSLOT EPZ 6
+CN EPZ 7
+N0 EPZ 8
+;
+; ROM
+;
 HOME EQU $FC58
 PRBYTE EQU $FDDA
+;
 ;
  ORG $800
  OBJ $800
 ;
-HAS_80C:
+;
+FIND:
  JSR HOME
  LDA #0
  STA PTR
- LDX #7
-;
-NXT_80:
- TXA
- ORA #$C0
+ STA MSLOT
+ LDA #$C8
  STA PTR+1
+ LDX #$08
+;
+NXT_SLOT:
+ DEX
+ BEQ BYE
+ DEC PTR+1
 ;
  LDY #5
  LDA (PTR),Y
  CMP #$38
- BNE NO_80
+ BNE NXT_SLOT
 ;
  LDY #7
  LDA (PTR),Y
  CMP #$18
- BNE NO_80
+ BNE NXT_SLOT
 ;
  LDY #$0B
  LDA (PTR),Y
- CMP #1
- BNE NO_80
+ CMP #$01
+ BNE NXT_SLOT
 ;
  INY
  LDA (PTR),Y
- AND #$F0
- CMP #$80
- BEQ HAS_80
+ CMP #$20
+ BNE NXT_SLOT
 ;
-NO_80:
- DEX
- BNE NXT_80
+ LDY #$FB
+ LDA (PTR),Y
+ CMP #$D6
+ BNE NXT_SLOT
 ;
-HAS_80:
- STX COL_80
+BYE:
  TXA
+ ASL
+ ASL
+ ASL
+ ASL
+ STA MSLOT
+ LDA PTR+1
+ STA CN
+ STX N0
  JMP PRBYTE
 ;
  END
