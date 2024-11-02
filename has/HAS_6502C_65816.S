@@ -2,19 +2,19 @@
 *
 *#--------------->
 * HAS_65C
-* OR 65816
+*
 * TEST THE
-* PROCESSOR 
+* PROCESSOR
 * MODEL
+* 6502C OR
+* 65816
 *
 * P. DUBOIN
 * 1 NOV 2024
 * LISA 2.5
 *
 * FLAG VALUE
-*
 * SIGN (minus) 6502
-* SIGN (plus) 65C02, 65816
 * CARRY (clear) 65C02
 * CARRY (set) 65816
 *
@@ -37,12 +37,12 @@ HAS_65C:
  BMI BY_65 ; Bug in 6502 causes sign flag not to clear.
 ;
  CLC
- HEX FB ; XCE instruction is a 65C02 NOP.
- BCC BY_65 ; If it was a 65816, carry would have set.
- HEX FB
+ HEX FB ; XCE opcode = 65C02 NOP.
+ BCC BY_65 ; 6502C
+ HEX FB ; XCE
  SEC ; flag as 65816.
 ;
-BY_65
+BY_65:
  CLD
  RTS
 ;
