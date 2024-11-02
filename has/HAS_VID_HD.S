@@ -1,0 +1,46 @@
+ NLS
+*
+*#--------------->
+* HAS_VID_HD
+* SCAN SLOTS
+* FOR VIDEO
+* HD CARD
+*
+* P. DUBOIN
+* 1 NOV 2024
+* LISA 2.5
+*
+* $Cn02 = $4C
+* $Cn03 = $EA
+* $Cn04 = $24
+*
+*#--------------->
+*
+;
+ ORG $800
+ OBJ $800
+;
+HAS_VHD:
+ LDX #$C7
+HD_LOOP:
+ STX HD_SLT+2
+ LDY #$02
+HD_SLT:
+ LDA $C700,Y
+ CMP HD_ID,Y
+ BNE NXT_HD
+ DEY
+ BPL HD_SLT
+HAS_HD:
+ SEC ; FOUND
+ RTS
+NXT_HD:
+ DEX
+ CPX #$C0
+ BNE HD_LOOP
+ CLC ; NOT FOUND
+ RTS
+HD_ID:
+ BYT $24,$EA,$4C
+;
+ END
