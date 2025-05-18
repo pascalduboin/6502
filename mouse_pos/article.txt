@@ -1,0 +1,135 @@
+Comment écrire des programmes qui utilisent la souris ?
+
+L'interface en langage assembleur vers le firmware de la souris est documentée à trois endroits :
+
+- Le matériel de référence fourni avec la carte AppleMouse pour le IIe.
+- Le IIc Technical Reference Manual.
+- Le IIgs Firmware Reference Manual.
+
+L'interfaçage avec la souris est quelque peu compliqué, surtout si vous souhaitez implémenter un curseur de souris (ce qui nécessite généralement d'écrire un gestionnaire d'interruption).
+
+Le premier problème consiste à localiser le firmware de la souris. Il peut se trouver dans n'importe quel slot pour un IIe ou IIgs, ou dans l'un des deux slots pour le IIc. La méthode la plus sûre consiste simplement à effectuer une recherche de slot, en recherchant les octets d'ID de la souris :
+
+$Cn05 = $38
+$Cn07 = $18
+$Cn0B = $01
+$Cn0C = $20
+$CnFB = $D6
+
+Sur un IIgs ROM 3, il est possible que le firmware de la souris ne soit pas disponible, car cela n'empêche pas l'utilisation de la souris depuis GS/OS (le Miscellaneous Toolset ou l'Event Manager peuvent toujours être utilisés). Une carte AppleMouse, si elle est installée, n'est pas utilisée par la toolbox.
+
+Sur un IIgs ROM 1, le firmware du slot de souris est utilisé par la toolbox, donc le slot 4 doit être configuré en "Mouse Port", ou une carte AppleMouse peut être installée dans n'importe quel slot.
+
+Utiliser le firmware de la souris consiste à appeler les différentes routines fournies par le firmware. Une table des points d'entrée est fournie dans le slot de la souris. Les routines communes à toutes les implémentations sont :
+
+$Cn12 SETMOUSE Définit le mode de la souris
+$Cn13 SERVEMOUSE Sert l'interruption de la souris
+$Cn14 READMOUSE  Lit la position de la souris
+$Cn15 CLEARMOUSE Réinitialise la position de la souris à 0 (mode delta)
+$Cn16 POSMOUSE Définit la position de la souris à une position définie par l'utilisateur
+$Cn17 CLAMPMOUSE Définit les limites de la souris dans une fenêtre
+$Cn18 HOMEMOUSE  Positionne la souris dans le coin supérieur gauche de la fenêtre de clamp
+$Cn19 INITMOUSE  Réinitialise les clamps aux valeurs par défaut ; positionne la souris à 0,0
+
+Chacune de ces adresses contient l'octet de poids faible du point d'entrée de la routine. L'octet de poids fort est $Cn. La méthode habituelle pour appeler ces routines consiste à configurer une seule sous-routine qui sera patchée avec l'adresse de la routine appropriée au besoin. Vous pouvez également configurer une série de sous-routines pour appeler chaque routine.
+
+La logique générale serait la suivante :
+
+1. Localiser le slot de la souris en recherchant les octets d'ID décrits précédemment.
+2. Patch le slot dans la routine suivante :
+
+	TOMOUSE:
+	LDX #$C1 ; Patch : octet operand avec le slot en forme $Cn
+	LDY #$10 ; Patch : octet operand avec le slot en forme $n0
+	JMP $C100 ; Patch : octet de poids fort de l'operand avec le slot en forme $Cn.
+	; Octet de poids faible de l'operand doit être patché avec le point d'entrée de la table ci-dessus.
+
+3. Configurer deux emplacements en page z��ro contenant $Cn00, qui seront utilisés pour rechercher la table.
+4. Utiliser le code suivant pour appeler chaque routine :
+
+ MOUSEPTR EQU $00 ; (ou un autre emplacement en page zéro)
+
+ SETMOUSE:
+ LDY #$12  ; Décalage vers le point d'entrée
+ BNE GOMOUSE ; Toujours pris
+
+ SERVEMOUSE:
+ LDY #$13
+ BNE GOMOUSE
+
+ [etc. – une routine pour chaque appel…]
+
+ GOMOUSE:
+ TAX   ; Preserve A
+ LDA (MOUSEPTR),Y; Obtient le point d'entrée
+ STA TOMOUSE+5 ; Patch du JMP
+ TXA   ; Restore A
+
+ TOMOUSE:
+ LDX #$C1
+ LDY #$10
+ JMP $C100
+
+Avec ce code, votre programme peut simplement faire `JSR INITMOUSE`, etc.
+
+Les routines de la souris utilisent des « trous d'écran » pour le slot contenant le firmware/la carte :
+
+$0478 + slot : octet faible X absolue
+$04F8 + slot : octet faible Y absolue
+$0578 + slot : octet fort X absolue
+$05F8 + slot : octet fort Y absolue
+$0678 + slot : réservé pour le firmware
+$06F8 + slot : réservé pour le firmware
+$0778 + slot : octet d'état d'interruption bouton
+$07F8 + slot : octet de mode
+
+Vous pouvez y accéder en chargeant le numéro de slot (LDX TOMOUSE+1) et en indexant les adresses de base avec X (ou en faisant AND $0F sur le registre puis en utilisant directement les adresses).
+
+L'octet d'état d'interruption est défini ainsi :
+
+Bit 7 6 5 4 3 2 1 0
+|  | | | | | | |
+|  | | | | | | \-- État précédent du bouton 1 (0=relâché,1=enfoncé)
+|  | | | | | \----- Mouvement détecté
+|  | | | | \------- Interruption bouton
+|  | | | \--------- Interruption VBL
+|  | | \----------- État actuel bouton 1
+|  | \------------- Mouvement depuis READMOUSE
+|  \--------------- État précédent bouton 0
+\----------------- État actuel bouton 0
+
+L'octet de mode :
+
+Bit 7 6 5 4 3 2 1 0
+|  | | | | | | |
+|  | | | | | | \-- Souris désactivée (0) ou activée (1)
+|  | | | | | \---- IRQ sur mouvement
+|  | | | | \------ IRQ sur bouton
+|  | | | \-------- IRQ sur VBL
+|  | | \---------- Réservé
+|  | \------------ Réservé
+|  \-------------- Réservé
+\----------------- Réservé
+
+Statuts valides après READMOUSE ; IRQ valides après SERVEMOUSE, effacées par READMOUSE.
+
+Description des routines :
+
+- SETMOUSE : A=mode ; C=1 si mode illégal.
+- SERVEMOUSE : C=0 si IRQ souris.
+- READMOUSE : C=0 ; maj positions et statuts.
+- CLEARMOUSE : C=0 ; réinit delta et statuts.
+- POSMOUSE : C=0 ; applique clamp.
+- CLAMPMOUSE : A=0 X,1 Y ; définit bornes ; C=0.
+- HOMEMOUSE : C=0 ; remet en coin sup gauche.
+- INITMOUSE : C=0 ; réinit par défaut.
+
+Mode d'emploi :
+
+1. SETMOUSE A=1 (enabled,no IRQ)
+2. INITMOUSE
+3. CLAMPMOUSE X puis Y
+4. SETMOUSE mode final
+5. En mode poll, appeler READMOUSE ; en mode IRQ, SERVICE+READ.
+
+Fin : SETMOUSE A=0 et retirer gestionnaire IRQ.

@@ -1,164 +1,158 @@
  NLS
 *
 *#--------------->
-* MEM_EXAM
-* DUMP MEM PAGE
-*
-* (<-) (P) (ESC) (->)
-*
-*
+* MOUSE_DUMP
+* NON FONCTIONNEL
 * P. DUBOIN
-* 1 NOV 2024
+* 17 MAI 2025
 * LISA 2.5
-*
 *#--------------->
 ;
 ;
-POINT EPZ $00 ; POINTER TO PAGE IN
-PAGE EPZ $01 ; MEMORY TO DISPLAY
-CH EPZ $24 ; CURSOR HORIZONTAL
+;----------------------------------------------------------
+; Gestion souris + affichage coordonnées DOS 3.3 (slot 4)
+;---------------------------------------------------------
 ;
-KBD EQU $C000 ; KEY PRESSED
-STROBE EQU $C010 ; CLEAR KEY PRESS
+ OBJ $800
+ ORG $800
 ;
-PRBL2 EQU $F94A ; PRINT 2 BLANKS
+MS_SLOT EPZ 0 ; n° de slot (4)
+XLoVar EPZ 1 ; stockage X LSB
+XHiVar EPZ 2 ; stockage X MSB
+YLoVar EPZ 3 ; stockage Y LSB
+YHiVar EPZ 4 ; stockage Y MSB
+OrigIRQ EPZ 5 ; sauv. vecteur IRQ original ($FFFE/$FFFF)
+;
 HOME EQU $FC58 ; CLEAR SCREEN
-RDKEY EQU $FD0C
-CROUT EQU $FD8E
 PRBYTE EQU $FDDA ; PRINT HEX BYTE
 COUT EQU $FDED ; PRINT ASCII CHAR
 ;
 ;
- ORG $800
- OBJ $800
-;
-;
 GO:
- LDA #$00
- STA POINT ; START WITH
- STA PAGE ; ZPAGE
-;--------------------------------
-DISPLAY:
  JSR HOME
- JSR HEADER
- JSR CROUT
- LDY #$00
-;
-NEWLINE:
- LDX #$0C ; TWELVE BYTES AT A TIME
- TYA
- JSR PRBYTE ; PRINT INDEX
- LDA #$A0
- JSR COUT ; SPACE
-A1 LDA (POINT),Y
- JSR PRBYTE ; PRINT HEX
- INY
- BEQ FILLIN ; PAGE DONE?
- DEX
- BNE A1 ; TWELVE YET?
+ JSR INITMSE
+MAIN:
+ JSR COORD
+ JSR PTR_XY
+ JMP MAIN
 ;
 ;
-ADJUST TYA
- SBC #$0C ; RESET Y
- TAY
- LDA #$A0
- JSR COUT ; SPACE
- LDX #$0C ; TWELVE AGAIN
+;----------------------------------------------------------
+; InitMouseSystem : sauvegarde vecteur, installe ISR, configure souris
+;----------------------------------------------------------
+INITMSE:
+;--- sauvegarde vecteur IRQ
+ LDA $FFFE ; bas du vecteur
+ STA OrigIRQ
+ LDA $FFFF ; haut du vecteur
+ STA OrigIRQ+1
 ;
-ASCII:
- LDA (POINT),Y
- CMP #$40 ; INVERSE?
- BCS B1 ; NO
- ORA #$C0 ; NORMALIZE
-B1 CMP #$80 ; FLASHING?
- BCS B2 ; NO
- ORA #$80 ; NORMALIZE
-B2 CMP #$A0 ; CONTROL?
- BCS B3 ; NO
- LDA #$AE ; PUT PERIOD
-B3 JSR COUT ; SEND IT
- INY
- BEQ GETCMD ; PAGE DONE?
- DEX
- BNE ASCII ; LINE DONE?
- BEQ NEWLINE
+;--- installer notre ISR
 ;
-FILLIN:
- LDX #$10 ; FILL LAST PARTIAL
- JSR PRBL2 ; LINE WITH SPACES
- LDY #$08 ; ADJUST Y
- BNE ADJUST
-;--------------------------------
-GETCMD:
- JSR CROUT
-C1 JSR RDKEY
- CMP #$9B ; ESCAPE?
- BEQ C2
- CMP #$95 ; RIGHT ARROW?
- BEQ C3
- CMP #$88 ; LEFT ARROW?
- BEQ C4
- CMP #$D0 ; "P"?
- BEQ GETPNUM
- BNE C1 ; NONE OF THE ABOVE
-C2 RTS
+ LDA #MSIRQ
+ STA $FFFE
+ LDA /MSIRQ
+ STA $FFFF
 ;
-C3 INC PAGE
- LDA PAGE
- CMP #$C0 ; MAKE SURE WE JUMP OVER
- BEQ C3 ; THE SOFT SWITCHES!
- JMP DISPLAY
-C4 DEC PAGE
- LDA PAGE
- CMP #$C0 ; MAKE SURE WE JUMP OVER
- BEQ C4 ; THE SOFT SWITCHES!
- JMP DISPLAY
-;--------------------------------
-GETPNUM:
- JSR HEADER
-D1 DEC CH ; SO PRBYTE WILL ALWAYS
- DEC CH ; DISPLAY IN SAME PLACE
-D2 LDA KBD
- BPL D2
- STA STROBE
- CMP #$8D ; RETURN?
- BEQ D5 ; YES, EXIT
- EOR #$B0
- CMP #$A ; 0-9?
- BCC D3 ; YES
- ADC #$88
- CMP #$FA ; A-F?
- BCC D2 ; NO
+;--- souris slot 4 en interruption (mvt + bouton)
 ;
-D3 LDY #$3 ; LOOP 4 TIMES
- ASL ; THROW AWAY HIGH NYBBLE
- ASL
- ASL
- ASL
-D4 ASL ; SHIFT INTO
- ROL PAGE ; PAGE NUMBER
- DEY
- BPL D4
- LDA PAGE
- JSR PRBYTE ; DISPLAY PAGE NUMBER
- JMP D1 ; GET NEXT KEYPRESS
-D5 JMP DISPLAY
+ PHP
+ SEI ; désactiver IRQ
+ LDA #$04 ; slot n = 4
+ STA MS_SLOT
 ;
-;--------------------------------
 ;
-HEADER:
- LDY #$00
-E1 LDA QPAGE,Y
- JSR COUT
- INY
- CPY #$05
- BNE E1
- LDA PAGE
- JMP PRBYTE
+; SETMOUSE: mode: bit0=on, bit1=mvt int, bit2=btn int => $07
 ;
-QPAGE:
- ASC "PAGE="
- BRK
+ LDA #$07
+ LDX #$C4 ; $Cn form
+ LDY #$40 ; $n0 form (4*16)
+ JSR $C412 ; SETMOUSE
+;
+;
+; INITMOUSE
+;
+ LDX #$C4
+ LDY #$40
+ JSR $C419
+;
+;
+; CLAMPMOUSE X (A=0)
+ LDA #$00
+ LDX #$C4
+ LDY #$40
+ JSR $C417
+;
+; CLAMPMOUSE Y (A=1)
+ LDA #$01
+ LDX #$C4
+ LDY #$40
+ JSR $C417
+;
+ PLP
  RTS
+;
+;------------------------------------------------------------------------------
+; ISR souris : servi à chaque VBL IRQ générée par la souris
+;------------------------------------------------------------------------------
+;
+MSIRQ:
+ PHA
+ JSR $C413 ; SERVEMOUSE, C=0 si IRQ souris
+ BCS NOMSE
+ JSR $C414 ; READMOUSE
+NOMSE PLA
+ RTI
+;
+;------------------------------------------------------------------------------
+; COORD : lit les “screen holes” et stocke en variables
+;------------------------------------------------------------------------------
+;
+COORD:
+ LDY MS_SLOT
+ LDX #$78
+ LDA $0478,Y ; X LSB
+ STA XLoVar
+ LDA $0578,Y ; X MSB
+ STA XHiVar
+ LDA $04F8,Y ; Y LSB
+ STA YLoVar
+ LDA $05F8,Y ; Y MSB
+ STA YHiVar
+ RTS
+;
+;------------------------------------------------------------------------------
+; PTR_XY : affiche "X=hhhh Y=hhhh" en hex
+;------------------------------------------------------------------------------
+;
+PTR_XY:
+; "X="
+ LDA #'X'
+ JSR COUT
+ LDA #'='
+ JSR COUT
+;
+; XHiVar / XLoVar
+ LDA XHiVar
+ JSR PRBYTE
+ LDA XLoVar
+ JSR PRBYTE
+;
+; " Y="
+ LDA #' '
+ JSR COUT
+ LDA #'Y'
+ JSR COUT
+ LDA #'='
+ JSR COUT
+;
+; YHiVar / YLoVar
+ LDA YHiVar
+ JSR PRBYTE
+ LDA YLoVar
+ JSR PRBYTE
+ LDA #$8D
+ JMP COUT
+;
 ;
  END
