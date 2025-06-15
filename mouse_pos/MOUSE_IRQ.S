@@ -1,10 +1,10 @@
  NLS
 *
 *#--------------->
-* MOUSE_DUMP
-* NON FONCTIONNEL
+* MOUSE_IRQ
+* TEST
 * P. DUBOIN
-* 17 MAI 2025
+* 17 JUIN 2025
 * LISA 2.5
 *#--------------->
 ;
@@ -15,6 +15,8 @@
 ;
  OBJ $800
  ORG $800
+;
+PTR EPZ 6
 ;
 MS_SLOT EPZ 0 ; n° de slot (4)
 XLoVar EPZ 1 ; stockage X LSB
@@ -30,79 +32,44 @@ COUT EQU $FDED ; PRINT ASCII CHAR
 ;
 ;
 GO:
- JSR HOME
- JSR INITMSE
-MAIN:
- JSR COORD
- JSR PTR_XY
+;
  JMP MAIN
 ;
+MOUSE:
+ PHA
+ LDA (PTR),Y
+ LDX #$C4
+ LDY #$40
+ STA JUMP+1
+ STX JUMP+2
+ PLA
 ;
-;----------------------------------------------------------
-; InitMouseSystem : sauvegarde vecteur, installe ISR, configure souris
-;----------------------------------------------------------
-INITMSE:
-;--- sauvegarde vecteur IRQ
- LDA $FFFE ; bas du vecteur
- STA  IRQLOC
- LDA $FFFF ; haut du vecteur
- STA  IRQLOC+1
+JMP:
+ JMP $0000
 ;
-;--- installer notre ISR
+;
+MAIN:
+;
+ LDA #$C4
+ STA PTR+1
+ LDY #$19
+ JSR MOUSE
+;
+; set the interrupt handler address to $0330
 ;
  LDA #MSIRQ
- STA $FFFE
+ STA IRQLOC
  LDA /MSIRQ
- STA $FFFF
+ STA IRQLOC+1
 ;
-;--- souris slot 4 en interruption (mvt + bouton)
-;
- PHP
- SEI ; désactiver IRQ
- LDA #$04 ; slot n = 4
- STA MS_SLOT
-;
-;
-; SETMOUSE: mode: bit0=on, bit1=mvt int, bit2=btn int => $07
-;
- LDA #$07
- LDX #$C4 ; $Cn form
- LDY #$40 ; $n0 form (4*16)
- JSR $C412 ; SETMOUSE
-;
-;
-; INITMOUSE
-;
- LDX #$C4
- LDY #$40
- JSR $C419
-;
-;
-; CLAMPMOUSE X (A=0)
- LDA #$00
- LDX #$C4
- LDY #$40
- JSR $C417
-;
-; CLAMPMOUSE Y (A=1)
- LDA #$01
- LDX #$C4
- LDY #$40
- JSR $C417
-;
- PLP
- RTS
-;
-;------------------------------------------------------------------------------
-; ISR souris : servi à chaque VBL IRQ générée par la souris
-;------------------------------------------------------------------------------
+ LDY #$12
+ LDA #$08
+ JMP MOUSE
 ;
 MSIRQ:
- PHA
- JSR $C413 ; SERVEMOUSE, C=0 si IRQ souris
- BCS NOMSE
- JSR $C414 ; READMOUSE
-NOMSE PLA
+ JSR COORD
+ STA $C030
+ LDA $45
  RTI
 ;
 ;------------------------------------------------------------------------------
