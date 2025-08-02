@@ -1,18 +1,18 @@
 # 6502 Assembly Source Code Collection for Apple II
 
-This folder contains a collection of 6502 assembly source code, specifically designed for the Apple II ecosystem. The focus is on disk utility tools, offering various functionalities to manage, access, and manipulate disk data on the Apple II.
+This folder includes a set of 6502 assembly source files tailored for the Apple II ecosystem. It focuses on disk utilities that allow you to manage, access, and manipulate disk data efficiently.
 
 ## Overview
 
-Each file in this folder provides distinct utility tools aimed at enhancing disk management for the Apple II. Whether you are exploring software development for vintage systems or creating custom disk utilities for the Apple II, this collection serves as a useful resource.
+Each file in this folder delivers a specific utility designed to improve disk management on the Apple II. Ideal for enthusiasts and developers alike, this collection supports both vintage software exploration and the creation of custom disk tools.
+
 
 ## Contents
 
-- Utility tools for disk data management
-- Source code entirely in 6502 assembly language
-- Modular code files for ease of understanding and adaptation
+This folder includes a set of utility tools for disk data management, written entirely in 6502 assembly language. Each module is designed to be clear, modular, and easy to adapt, making it a practical resource for anyone developing on the Apple II.
 
-Feel free to explore, modify, and contribute to this project as part of your Apple II development endeavors!
+
+Feel free to explore, modify, and contribute to this project as part of your Apple II development journey!
 
 Pascal DUBOIN — AppleAddict from the Early Days.
 Call -151 for Ever
